@@ -15,6 +15,8 @@ An ESPHome custom component that creates a Matter-compatible light controller wh
 
 This custom component allows you to control your WLED LED strips through Matter-compatible home automation systems (like Apple Home, Google Home, Amazon Alexa, etc.) by acting as a bridge. When you control the light through Matter, it sends the corresponding JSON API commands to your WLED device.
 
+**🔗 See [MATTER.md](MATTER.md) for detailed information about Matter protocol integration.**
+
 ## Requirements
 
 - ESPHome 2024.11.0 or later (for Matter support)
