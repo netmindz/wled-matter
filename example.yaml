@@ -6,17 +6,25 @@
 esphome:
   name: wled-matter-bridge
   friendly_name: WLED Matter Bridge
+  platformio_options:
+    board_build.partitions: partitions.csv
 
 esp32:
   board: esp32dev
   framework:
-    type: arduino
+    type: esp-idf
+    version: recommended
+    sdkconfig_options:
+      # Matter requires specific ESP-IDF settings
+      CONFIG_FREERTOS_UNICORE: y
+      CONFIG_COMPILER_OPTIMIZATION_SIZE: y
+      CONFIG_LWIP_MAX_SOCKETS: "16"
 
 # Enable logging
 logger:
   level: DEBUG
 
-# Enable Home Assistant API (for Matter integration)
+# Enable Home Assistant API (optional - for local control and debugging)
 api:
   encryption:
     key: "YOUR_ENCRYPTION_KEY_HERE"
@@ -34,8 +42,19 @@ wifi:
     ssid: "WLED Matter Fallback"
     password: "fallbackpassword"
 
-# Matter support (requires ESPHome 2024.5.0 or later)
+# Matter protocol support
 esp32_ble:
+
+# Enable mDNS for Matter discovery
+mdns:
+  disabled: false
+
+# Matter configuration - THIS IS THE KEY ADDITION
+# This creates an actual Matter device endpoint
+matter:
+  vendor_id: 0xFFF1  # Vendor ID (use your own if you have one)
+  product_id: 0x8001  # Product ID for light
+  device_type: dimmable_light  # Matter device type
 
 # External components - the WLED Matter Light custom component
 external_components:

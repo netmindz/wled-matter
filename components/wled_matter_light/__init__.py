@@ -12,14 +12,16 @@ from esphome.const import (
     CONF_OUTPUT_ID,
 )
 
+# Require network for HTTP communication and Matter for protocol support
 DEPENDENCIES = ["network"]
 AUTO_LOAD = ["json"]
+# Note: Matter integration is handled at the root level in the YAML config
 
 CONF_WLED_HOST = "wled_host"
 CONF_WLED_PORT = "wled_port"
 
 wled_matter_light_ns = cg.esphome_ns.namespace("wled_matter_light")
-WLEDMatterLight = wled_matter_light_ns.class_("WLEDMatterLight", light.LightOutput)
+WLEDMatterLight = wled_matter_light_ns.class_("WLEDMatterLight", light.LightOutput, cg.Component)
 
 CONFIG_SCHEMA = light.RGB_LIGHT_SCHEMA.extend(
     {
@@ -32,6 +34,7 @@ CONFIG_SCHEMA = light.RGB_LIGHT_SCHEMA.extend(
 
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_OUTPUT_ID])
+    await cg.register_component(var, config)
     await light.register_light(var, config)
 
     cg.add(var.set_wled_host(config[CONF_WLED_HOST]))

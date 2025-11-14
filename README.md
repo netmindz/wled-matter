@@ -17,10 +17,12 @@ This custom component allows you to control your WLED LED strips through Matter-
 
 ## Requirements
 
-- ESPHome 2024.5.0 or later (for Matter support)
-- ESP32 board (Matter requires ESP32)
+- ESPHome 2024.11.0 or later (for Matter support)
+- ESP32 board (Matter protocol requires ESP32, not ESP8266)
+- ESP-IDF framework (required for Matter, not Arduino)
 - Existing WLED installation (v0.13.0 or later recommended)
 - WiFi network
+- Matter-compatible controller (Apple Home, Google Home, Amazon Alexa, etc.)
 
 ## Installation
 
@@ -70,6 +72,32 @@ Or using ESPHome Dashboard:
 ### Basic Configuration
 
 ```yaml
+esphome:
+  name: wled-matter-bridge
+  platformio_options:
+    board_build.partitions: partitions.csv
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf  # Matter requires ESP-IDF, not Arduino
+    version: recommended
+    sdkconfig_options:
+      CONFIG_FREERTOS_UNICORE: y
+      CONFIG_COMPILER_OPTIMIZATION_SIZE: y
+      CONFIG_LWIP_MAX_SOCKETS: "16"
+
+# Matter protocol configuration
+esp32_ble:  # Required for Matter commissioning
+
+mdns:
+  disabled: false  # Required for Matter discovery
+
+matter:
+  vendor_id: 0xFFF1
+  product_id: 0x8001
+  device_type: dimmable_light
+
 external_components:
   - source:
       type: local
@@ -86,6 +114,7 @@ light:
 
 ### Configuration Options
 
+#### WLED Component Options
 | Option | Type | Required | Default | Description |
 |--------|------|----------|---------|-------------|
 | `wled_host` | string | Yes | - | IP address or hostname of WLED device |
@@ -93,14 +122,33 @@ light:
 | `name` | string | Yes | - | Name of the light in Home Assistant/Matter |
 | `id` | string | Yes | - | Internal ID for the light component |
 
+#### Matter Configuration Options
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `vendor_id` | hex | Yes | 0xFFF1 | Matter vendor ID (use your own if registered) |
+| `product_id` | hex | Yes | 0x8001 | Matter product ID |
+| `device_type` | string | Yes | dimmable_light | Matter device type (use dimmable_light or color_temperature_light) |
+
 ## How It Works
 
-1. The component creates a Matter-compatible light endpoint on your ESP32
-2. When you control the light via Matter (e.g., from Apple Home):
-   - The Matter command is received by ESPHome
-   - The component translates it to a WLED JSON API call
-   - The JSON request is sent via HTTP POST to your WLED device
-3. Your WLED device receives the command and updates the LEDs accordingly
+1. **Matter Protocol Layer**: The ESP32 runs ESPHome with Matter protocol support, creating a Matter endpoint that appears as a dimmable light to Matter controllers
+2. **Light Control Interface**: ESPHome's light component receives Matter commands (on/off, brightness, color)
+3. **Translation Layer**: The custom component translates Matter light commands into WLED JSON API format
+4. **HTTP Communication**: Commands are sent via HTTP POST to the WLED device's JSON API endpoint
+5. **WLED Execution**: The WLED device receives the JSON API call and updates the LED strips
+
+**Matter Flow:**
+```
+Matter Controller (Apple Home/Google/Alexa)
+    ↓ (Matter Protocol over Thread/WiFi)
+ESP32 with ESPHome + Matter
+    ↓ (Light Component)
+WLED Matter Light Component
+    ↓ (HTTP POST JSON)
+WLED Device
+    ↓
+LED Strips
+```
 
 ## WLED JSON API
 
@@ -156,6 +204,42 @@ Example JSON payload:
    ```
 
 2. Check that all required dependencies are installed
+
+3. Make sure you're using ESP-IDF framework (not Arduino) - Matter requires ESP-IDF
+
+## Matter Commissioning
+
+After flashing the firmware to your ESP32:
+
+### Using Apple Home
+1. Open the Home app on your iPhone/iPad
+2. Tap the "+" button to add an accessory
+3. Select "More options..." 
+4. Look for "WLED Matter Bridge" (or your configured name)
+5. Scan the QR code shown in ESPHome logs or displayed on the device
+6. Follow the pairing instructions
+
+### Using Google Home
+1. Open the Google Home app
+2. Tap "+" then "Set up device"
+3. Select "Matter-enabled device"
+4. Scan the QR code from ESPHome logs
+5. Complete the setup process
+
+### Using Home Assistant
+1. Go to Settings → Devices & Services
+2. Click "+ Add Integration"
+3. Search for "Matter"
+4. Follow the commissioning wizard
+5. Scan the QR code or enter the pairing code
+
+### Getting the QR Code
+The Matter QR code and manual pairing code will be displayed in:
+- ESPHome logs during device boot
+- ESPHome dashboard (when connected to the device)
+- Serial monitor output
+
+**Note**: The device must be connected to WiFi before Matter commissioning can begin.
 
 ## Development
 
