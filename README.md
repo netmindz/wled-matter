@@ -10,10 +10,14 @@ An ESPHome custom component that creates a Matter-compatible light controller wh
 - 🏠 Matter protocol support (via ESPHome)
 - 🔗 Integrates with existing WLED installations
 - 📡 WiFi connectivity
+- 🔍 **Auto-discovery of WLED devices on your network**
+- 📦 **Support for multiple WLED devices simultaneously**
 
 ## Overview
 
 This custom component allows you to control your WLED LED strips through Matter-compatible home automation systems (like Apple Home, Google Home, Amazon Alexa, etc.) by acting as a bridge. When you control the light through Matter, it sends the corresponding JSON API commands to your WLED device.
+
+**New in v2:** The component now supports **automatic discovery** of all WLED devices on your network! Simply enable discovery mode and the component will find and create Matter lights for every WLED device it detects.
 
 **🔗 See [MATTER.md](MATTER.md) for detailed information about Matter protocol integration.**
 
@@ -37,7 +41,21 @@ cd wled-matter
 
 ### 2. Create Your Configuration
 
-Copy the example configuration:
+Choose between auto-discovery or manual configuration:
+
+#### Option A: Auto-Discovery Mode (Recommended)
+
+Copy the discovery example:
+
+```bash
+cp example-discovery.yaml your-device.yaml
+```
+
+This will automatically find all WLED devices on your network and create Matter lights for them!
+
+#### Option B: Manual Configuration
+
+Copy the manual example:
 
 ```bash
 cp example.yaml your-device.yaml
@@ -71,7 +89,9 @@ Or using ESPHome Dashboard:
 
 ## Configuration
 
-### Basic Configuration
+### Auto-Discovery Configuration (Recommended)
+
+Automatically discover and control all WLED devices on your network:
 
 ```yaml
 esphome:
@@ -93,7 +113,7 @@ esp32:
 esp32_ble:  # Required for Matter commissioning
 
 mdns:
-  disabled: false  # Required for Matter discovery
+  disabled: false  # Required for Matter AND WLED discovery
 
 matter:
   vendor_id: 0xFFF1
@@ -106,17 +126,67 @@ external_components:
       path: components
     components: [ wled_matter_light ]
 
+# Enable auto-discovery
+wled_matter_light:
+  enable_discovery: true
+  discovery_prefix: "WLED"  # Prefix for discovered device names
+```
+
+### Manual Configuration
+
+Configure specific WLED devices manually:
+
+```yaml
+# ... (same Matter configuration as above) ...
+
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [ wled_matter_light ]
+
 light:
   - platform: wled_matter_light
-    name: "WLED Light"
-    id: wled_light
-    wled_host: "192.168.1.100"  # Your WLED device IP
-    wled_port: 80                # WLED port (default: 80)
+    name: "WLED Living Room"
+    id: wled_living_room
+    wled_host: "192.168.1.100"
+    wled_port: 80
+  
+  - platform: wled_matter_light
+    name: "WLED Bedroom"
+    id: wled_bedroom
+    wled_host: "wled-bedroom.local"
+    wled_port: 80
+```
+
+### Mixed Configuration
+
+You can use both auto-discovery AND manual configuration together:
+
+```yaml
+# ... (Matter configuration) ...
+
+# Enable auto-discovery for most devices
+wled_matter_light:
+  enable_discovery: true
+  discovery_prefix: "Auto"
+
+# Manually add specific devices with custom names
+light:
+  - platform: wled_matter_light
+    name: "Main Living Room Light"
+    wled_host: "192.168.1.100"
 ```
 
 ### Configuration Options
 
-#### WLED Component Options
+#### Auto-Discovery Hub Options
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `enable_discovery` | boolean | No | true | Enable automatic discovery of WLED devices |
+| `discovery_prefix` | string | No | "WLED" | Prefix for automatically discovered device names |
+
+#### Manual Light Component Options
 | Option | Type | Required | Default | Description |
 |--------|------|----------|---------|-------------|
 | `wled_host` | string | Yes | - | IP address or hostname of WLED device |
