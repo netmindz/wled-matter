@@ -1,0 +1,84 @@
+# Example ESPHome configuration with WLED Auto-Discovery
+#
+# This configuration enables automatic discovery of all WLED devices
+# on your network and creates Matter lights for each one.
+
+esphome:
+  name: wled-matter-discovery
+  friendly_name: WLED Matter Discovery
+  platformio_options:
+    board_build.partitions: partitions.csv
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+    version: recommended
+    sdkconfig_options:
+      # Matter requires specific ESP-IDF settings
+      CONFIG_FREERTOS_UNICORE: y
+      CONFIG_COMPILER_OPTIMIZATION_SIZE: y
+      CONFIG_LWIP_MAX_SOCKETS: "16"
+
+# Enable logging
+logger:
+  level: DEBUG
+
+# Enable Home Assistant API (optional - for local control and debugging)
+api:
+  encryption:
+    key: "YOUR_ENCRYPTION_KEY_HERE"
+
+ota:
+  - platform: esphome
+    password: "YOUR_OTA_PASSWORD_HERE"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot in case wifi connection fails
+  ap:
+    ssid: "WLED Matter Fallback"
+    password: "fallbackpassword"
+
+# Matter protocol support
+esp32_ble:
+
+# Enable mDNS for Matter discovery AND WLED device discovery
+mdns:
+  disabled: false
+
+# Matter configuration
+matter:
+  vendor_id: 0xFFF1  # Vendor ID (use your own if you have one)
+  product_id: 0x8001  # Product ID for light
+  device_type: dimmable_light  # Matter device type
+
+# External components
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [ wled_matter_light ]
+
+# Option 1: Auto-discovery mode (discovers all WLED devices on network)
+wled_matter_light:
+  enable_discovery: true
+  discovery_prefix: "WLED"  # All discovered lights will be named "WLED <device_name>"
+
+# Option 2: Manual configuration (can be used alongside or instead of discovery)
+# Uncomment and configure these if you want to manually add specific WLED devices:
+#
+# light:
+#   - platform: wled_matter_light
+#     name: "WLED Living Room"
+#     id: wled_living_room
+#     wled_host: "192.168.1.100"
+#     wled_port: 80
+#
+#   - platform: wled_matter_light
+#     name: "WLED Bedroom"
+#     id: wled_bedroom
+#     wled_host: "wled-bedroom.local"
+#     wled_port: 80
