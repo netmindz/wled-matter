@@ -1,7 +1,7 @@
 #pragma once
 
 #include "esphome/core/component.h"
-#include "esphome/components/light/light_output.h"
+#include "esphome/components/light/light.h"
 #include "esphome/components/json/json_util.h"
 #include "esphome/core/log.h"
 #include <string>
