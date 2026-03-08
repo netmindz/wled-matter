@@ -2,9 +2,7 @@
 
 #include "esphome/core/component.h"
 #include "esphome/core/log.h"
-#include "esphome/components/light/light_state.h"
 #include "wled_matter_light.h"
-#include <vector>
 #include <string>
 #include <map>
 

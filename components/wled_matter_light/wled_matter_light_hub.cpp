@@ -1,8 +1,11 @@
 #include "wled_matter_light_hub.h"
 #include "esphome/core/log.h"
-#include "esphome/core/application.h"
 #include "esphome/components/network/util.h"
-#include "esphome/components/mdns/mdns_component.h"
+
+#ifdef USE_ESP32
+#include "mdns.h"
+#include "esp_netif.h"
+#endif
 
 namespace esphome {
 namespace wled_matter_light {
@@ -46,11 +49,57 @@ void WLEDMatterLightHub::dump_config() {
 }
 
 void WLEDMatterLightHub::scan_for_wled_devices_() {
-  // mDNS-based discovery is done at config-time in ESPHome (esp-idf framework).
-  // Runtime mDNS queries are not directly supported via ESPHome's mdns component API.
-  // Log a notice and skip — devices should be configured statically via the light platform.
-  ESP_LOGD(TAG, "Runtime mDNS discovery not available in esp-idf framework; "
-                "configure WLED devices statically using the wled_matter_light light platform.");
+#ifdef USE_ESP32
+  ESP_LOGD(TAG, "Scanning for WLED devices via mDNS (_wled._tcp)...");
+
+  mdns_result_t *results = nullptr;
+  esp_err_t err = mdns_query_ptr("_wled", "_tcp", 3000, 10, &results);
+
+  if (err != ESP_OK) {
+    ESP_LOGW(TAG, "mDNS query failed: %s", esp_err_to_name(err));
+    return;
+  }
+
+  if (results == nullptr) {
+    ESP_LOGD(TAG, "No WLED devices found");
+    return;
+  }
+
+  mdns_result_t *r = results;
+  while (r != nullptr) {
+    if (r->hostname && r->addr) {
+      std::string hostname = r->hostname;
+
+      if (this->discovered_devices_.find(hostname) == this->discovered_devices_.end()) {
+        // Extract first IPv4 address
+        std::string ip;
+        mdns_ip_addr_t *addr = r->addr;
+        while (addr != nullptr) {
+          if (addr->addr.type == ESP_IPADDR_TYPE_V4) {
+            char ip_buf[16];
+            esp_ip4addr_ntoa(&addr->addr.u_addr.ip4, ip_buf, sizeof(ip_buf));
+            ip = ip_buf;
+            break;
+          }
+          addr = addr->next;
+        }
+
+        uint16_t port = r->port > 0 ? r->port : 80;
+        std::string name = r->instance_name ? r->instance_name : hostname;
+
+        if (!ip.empty()) {
+          ESP_LOGI(TAG, "Discovered WLED device: %s at %s:%d", name.c_str(), ip.c_str(), port);
+          this->create_light_for_device_(hostname, ip, port, name);
+        }
+      }
+    }
+    r = r->next;
+  }
+
+  mdns_query_results_free(results);
+#else
+  ESP_LOGW(TAG, "mDNS discovery not supported on this platform");
+#endif
 }
 
 void WLEDMatterLightHub::create_light_for_device_(const std::string &hostname,
